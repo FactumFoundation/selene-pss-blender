@@ -27,6 +27,23 @@ from bpy.types import Operator, Panel, PropertyGroup
 # PROPERTIES
 # ---------------------------------------------------------------------------
 
+def _drop_processed_depth():
+    """
+    Remove the leftover processed depth image. The DPI-mode preview in the
+    panel reads from bpy.data.images['PSS_depth_disp'] to show
+    'WxH px -> cm x cm', so a leftover image from a previous run would show
+    dimensions that no longer match the currently selected slot.
+    """
+    img = bpy.data.images.get("PSS_depth_disp")
+    if img is not None:
+        bpy.data.images.remove(img)
+
+
+def _on_depth_path_update(self, context):
+    """Fired when path_depth changes (browse, drag-and-drop, clear)."""
+    _drop_processed_depth()
+
+
 class PSSProperties(PropertyGroup):
 
     # Imagenes de entrada
@@ -36,6 +53,7 @@ class PSSProperties(PropertyGroup):
         name="Depth map",
         description="32-bit float grayscale TIFF (depth map in metres)",
         default="",
+        update=_on_depth_path_update,
     )
     path_albedo: StringProperty(
         name="Albedo",
