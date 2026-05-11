@@ -1,5 +1,5 @@
 # Selene PSS Importer — Blender addon
-## User manual v2.4.3
+## User manual v2.4.4
 J. Cano · Factum Arte / Factum Foundation
 
 ---
@@ -216,5 +216,5 @@ Example: original 25 000 px at 600 DPI, downsampled to 8 192 px → DPI_downsamp
 
 ---
 
-*Manual version 2.4.3 — Selene PSS addon v2.4.3*
+*Manual version 2.4.4 — Selene PSS addon v2.4.4*
 *Factum Arte / Factum Foundation — May 2026*

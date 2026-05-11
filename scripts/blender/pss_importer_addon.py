@@ -7,7 +7,7 @@ Importa escaneos photometric-stereo en Blender a partir de 4 imagenes.
 bl_info = {
     "name":        "Selene PSS",
     "author":      "Factum Arte / Factum Foundation",
-    "version":     (2, 4, 3),
+    "version":     (2, 4, 4),
     "blender":     (3, 0, 0),
     "location":    "View3D > Sidebar > PSS",
     "description": "Import photometric stereo scans into Blender (depth, albedo, normal, alpha)",
