@@ -142,9 +142,14 @@ def _convert_depth_32f_to_16b(path_in):
         bpy.data.images.remove(img32)
         raise ValueError("Depth map is not 32-bit float")
 
-    # Extract R channel; flip vertically (Blender origin = bottom-left)
-    px    = np.array(img32.pixels[:], dtype=np.float32).reshape((h, w, 4))
-    depth = np.flipud(px[:, :, 0])
+    # Extract R channel; flip vertically (Blender origin = bottom-left).
+    # foreach_get with a preallocated buffer avoids the Python list copy that
+    # img32.pixels[:] used to create — that intermediate doubled peak memory
+    # and was a major freeze cause on large recordings (>100 Mpx).
+    buf = np.empty(w * h * 4, dtype=np.float32)
+    img32.pixels.foreach_get(buf)
+    depth = np.flipud(buf.reshape(h, w, 4)[:, :, 0].copy())
+    del buf
     bpy.data.images.remove(img32)
 
     d_min     = float(depth.min())
@@ -162,12 +167,18 @@ def _convert_depth_32f_to_16b(path_in):
 
     img_out = bpy.data.images.new("_pss_depth_out_tmp", width=w, height=h,
                                    alpha=False, float_buffer=False)
-    rgba = np.zeros((h, w, 4), dtype=np.float32)
-    rgba[:, :, 0] = np.flipud(norm)   # flip back to Blender orientation
-    rgba[:, :, 1] = rgba[:, :, 0]
-    rgba[:, :, 2] = rgba[:, :, 0]
-    rgba[:, :, 3] = 1.0
-    img_out.pixels = rgba.flatten().tolist()
+    # foreach_set on a contiguous numpy buffer avoids ndarray.tolist() — that
+    # call materialised a Python list of ~h*w*4 floats and was the dominant
+    # freeze on large recordings. We also skip the (h, w, 4) reshape and write
+    # directly into the flat interleaved RGBA buffer Blender expects.
+    flat_norm = np.ascontiguousarray(np.flipud(norm)).ravel()
+    rgba = np.empty(h * w * 4, dtype=np.float32)
+    rgba[0::4] = flat_norm
+    rgba[1::4] = flat_norm
+    rgba[2::4] = flat_norm
+    rgba[3::4] = 1.0
+    img_out.pixels.foreach_set(rgba)
+    del rgba, flat_norm
 
     scene = bpy.context.scene
     cfg   = scene.render.image_settings
