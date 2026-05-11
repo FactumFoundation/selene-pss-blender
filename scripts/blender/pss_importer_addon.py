@@ -431,7 +431,8 @@ class PSS_OT_Process(Operator):
             return {'CANCELLED'}
 
         wm.progress_begin(0, 100)
-        print("\n=== PSS IMPORTER v2.0 - START ===")
+        v = bl_info["version"]
+        print(f"\n=== PSS IMPORTER v{v[0]}.{v[1]}.{v[2]} - START ===")
 
         # Echo large-file warnings to the console so they're visible even when
         # the user has scrolled the panel away from the slot rows.
@@ -508,7 +509,7 @@ class PSS_OT_Process(Operator):
             props.result_ok      = True
 
             wm.progress_update(100)
-            print("=== PSS IMPORTER v2.0 - DONE ===\n")
+            print(f"=== PSS IMPORTER v{v[0]}.{v[1]}.{v[2]} - DONE ===\n")
             self.report({'INFO'}, f"[OK] Object: {props.width_cm:.1f} x {props.height_cm:.1f} cm, Z={range_mm:.3f} mm")
 
         except Exception as e:
@@ -765,7 +766,8 @@ def register():
     bpy.utils.register_class(PSS_FH_DropImages)
     bpy.types.Scene.pss_props = bpy.props.PointerProperty(type=PSSProperties)
     bpy.app.handlers.load_post.append(_on_load_post)
-    print("[OK] Selene PSS v2.4.3 registered")
+    v = bl_info["version"]
+    print(f"[OK] Selene PSS v{v[0]}.{v[1]}.{v[2]} registered")
 
 
 def unregister():
