@@ -7,7 +7,7 @@ Importa escaneos photometric-stereo en Blender a partir de 4 imagenes.
 bl_info = {
     "name":        "Selene PSS",
     "author":      "Factum Arte / Factum Foundation",
-    "version":     (2, 4, 2),
+    "version":     (2, 4, 3),
     "blender":     (3, 0, 0),
     "location":    "View3D > Sidebar > PSS",
     "description": "Import photometric stereo scans into Blender (depth, albedo, normal, alpha)",
@@ -100,6 +100,45 @@ class PSSProperties(PropertyGroup):
 # ---------------------------------------------------------------------------
 
 QUALITY_N = {'LOW': 64, 'MED': 32, 'HIGH': 16, 'ULTRA': 8}
+
+# File-size thresholds for the large-scan warning shown in the panel.
+# Heuristic only: bytes on disk, not pixel dimensions. Avoids parsing TIFF
+# headers (which would add code and BigTIFF complexity) at the cost of being
+# coarse. A 32-bit float TIFF of ~150 Mpx already exceeds 'warn'.
+LARGE_FILE_WARN_MB   = 500
+LARGE_FILE_SEVERE_MB = 2000
+
+
+def _file_size_mb(path):
+    """Return file size in MB, or None if the path is empty or missing."""
+    if not path:
+        return None
+    abs_path = bpy.path.abspath(path)
+    if not os.path.exists(abs_path):
+        return None
+    try:
+        return os.path.getsize(abs_path) / (1024 * 1024)
+    except OSError:
+        return None
+
+
+def _large_file_warning(path):
+    """
+    Inspect an image path and return (severity, message) if it looks large
+    enough to risk a freeze/crash, else None.
+
+    severity is 'WARN' or 'SEVERE' and maps to icon colour in the panel.
+    """
+    size_mb = _file_size_mb(path)
+    if size_mb is None:
+        return None
+    if size_mb >= LARGE_FILE_SEVERE_MB:
+        return ('SEVERE',
+                f"{size_mb:.0f} MB - may freeze Blender, downsample externally")
+    if size_mb >= LARGE_FILE_WARN_MB:
+        return ('WARN',
+                f"{size_mb:.0f} MB - large file, may be slow")
+    return None
 
 
 def _progress(wm, step, total, label):
@@ -390,6 +429,19 @@ class PSS_OT_Process(Operator):
         wm.progress_begin(0, 100)
         print("\n=== PSS IMPORTER v2.0 - START ===")
 
+        # Echo large-file warnings to the console so they're visible even when
+        # the user has scrolled the panel away from the slot rows.
+        for slot_path, slot_label in (
+            (props.path_depth,  "Depth"),
+            (props.path_albedo, "Albedo"),
+            (props.path_normal, "Normal"),
+            (props.path_alpha,  "Alpha"),
+        ):
+            warn = _large_file_warning(slot_path)
+            if warn is not None:
+                severity, msg = warn
+                print(f"[{severity}] {slot_label}: {msg}")
+
         try:
             # STEP 1: Convert depth map 32-bit -> 16-bit
             _progress(wm, 0, 10, "Loading 32-bit depth map...")
@@ -500,11 +552,32 @@ class PSS_PT_Panel(Panel):
                 row.label(text="", icon='CHECKMARK')
             elif required and not val:
                 row.label(text="", icon='ERROR')
+            # Large-file warning row (only when the file exists and is big).
+            warn = _large_file_warning(val)
+            if warn is not None:
+                severity, msg = warn
+                icon = 'CANCEL' if severity == 'SEVERE' else 'ERROR'
+                parent.row().label(text=msg, icon=icon)
 
         file_row(box, "path_depth",  "pss.browse_depth",  "Depth (32-bit)",  required=True)
         file_row(box, "path_albedo", "pss.browse_albedo", "Albedo (16-bit)", required=False)
         file_row(box, "path_normal", "pss.browse_normal", "Normal (16-bit)", required=False)
         file_row(box, "path_alpha",  "pss.browse_alpha",  "Alpha (optional)",required=False)
+
+        # Generic note when any slot triggered a warning, so the user reads
+        # the rationale once rather than once per row.
+        any_warn = any(
+            _large_file_warning(getattr(props, p, "")) is not None
+            for p in ("path_depth", "path_albedo", "path_normal", "path_alpha")
+        )
+        if any_warn:
+            note = box.box()
+            note.label(text="Large scan detected", icon='INFO')
+            col = note.column(align=True)
+            col.scale_y = 0.85
+            col.label(text="Geometry Quality reduces mesh density,")
+            col.label(text="not texture size. Consider downsampling")
+            col.label(text="images externally before importing.")
 
         # ---- Object size ----
         box2 = layout.box()
@@ -688,7 +761,7 @@ def register():
     bpy.utils.register_class(PSS_FH_DropImages)
     bpy.types.Scene.pss_props = bpy.props.PointerProperty(type=PSSProperties)
     bpy.app.handlers.load_post.append(_on_load_post)
-    print("[OK] Selene PSS v2.4.2 registered")
+    print("[OK] Selene PSS v2.4.3 registered")
 
 
 def unregister():

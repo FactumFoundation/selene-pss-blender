@@ -46,6 +46,30 @@ Dropped files fill the first empty slot in order: depth → albedo → normal �
 | High | n=16 | Final quality |
 | Ultra | n=8 | Maximum detail (slow) |
 
+**Geometry Quality only changes mesh density.** It does not reduce the size of
+the depth, albedo, normal or alpha textures, which are always loaded at full
+resolution.
+
+## Large scans
+
+Blender can freeze or crash on very large recordings (above ~16 384 px per side
+or files larger than ~500 MB). The most common limits are GPU texture size and
+RAM pressure during depth-map conversion, neither of which the addon can lift.
+
+If the panel shows a large-file warning, downsample the inputs **before**
+importing them. ImageMagick is the simplest tool:
+
+```
+magick depth.tif   -resize 8192x8192 depth_8k.tif
+magick albedo.tif  -resize 8192x8192 albedo_8k.tif
+magick normal.tif  -resize 8192x8192 normal_8k.tif
+```
+
+Downsample depth, albedo and normal with the same target size so they stay
+aligned. Re-importing a downsampled scan keeps the physical dimensions and Z
+range correct as long as DPI mode is configured for the new pixel size, or
+W/H is entered manually.
+
 ## Repository layout
 
 ```
