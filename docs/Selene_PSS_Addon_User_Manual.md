@@ -1,5 +1,5 @@
 # Selene PSS Importer — Blender addon
-## User manual v2.4
+## User manual v2.4.3
 J. Cano · Factum Arte / Factum Foundation
 
 ---
@@ -96,6 +96,8 @@ Controls the subdivision density of the base mesh:
 
 Lower n = more subdivisions = more geometric detail but higher memory and processing time.
 
+**Important:** Geometry Quality only changes mesh density. It does **not** reduce the size of the depth, albedo, normal or alpha textures — these are always loaded at full resolution. For very large scans, see the **Large scans** section below.
+
 ---
 
 ## Processing a scan
@@ -172,6 +174,37 @@ The normal map encodes surface orientation at pixel level, adding fine detail wi
 
 ---
 
+## Large scans
+
+Blender can freeze or crash on very large recordings (above ~16 384 px per side or files larger than ~500 MB). The two practical limits are GPU texture size and the RAM pressure of the depth-map conversion. Neither is something the addon can lift.
+
+When a file is large enough to be at risk, the panel shows a warning under the slot:
+
+- **Yellow warning** (≥ 500 MB on disk) — likely slow, may stress RAM
+- **Red warning** (≥ 2 GB on disk) — may freeze Blender, downsample externally
+
+The warning is non-blocking — you can still press **Process scan** at your own risk.
+
+The recommended workflow for very large scans is to **downsample the inputs before importing**, using a tool that handles BigTIFF correctly. ImageMagick is the simplest option:
+
+```
+magick depth.tif   -resize 8192x8192 depth_8k.tif
+magick albedo.tif  -resize 8192x8192 albedo_8k.tif
+magick normal.tif  -resize 8192x8192 normal_8k.tif
+```
+
+Downsample depth, albedo and normal to the **same target size** so the textures stay aligned. The Z range (depth) is preserved automatically — the addon reads it from the values inside the depth map, not from pixel dimensions.
+
+For physical size after downsampling, **the safe option is W/H mode**: enter the real-world width and height in cm manually, exactly as you would for the original scan. If you prefer DPI mode, the DPI value must be rescaled to match the new pixel count:
+
+```
+DPI_downsampled = DPI_original × (new_px / old_px)
+```
+
+Example: original 25 000 px at 600 DPI, downsampled to 8 192 px → DPI_downsampled = 600 × (8192 / 25000) ≈ 197.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Likely cause | Fix |
@@ -179,8 +212,9 @@ The normal map encodes surface orientation at pixel level, adding fine detail wi
 | Model is completely flat | Depth map not read correctly | Check that the TIFF is 32-bit float; check console for `[INFO] Depth range` |
 | Wrong physical scale | DPI value incorrect | Switch to W/H mode and enter dimensions manually |
 | Drag-and-drop assigns to wrong slot | Filename has no recognisable keyword | Rename file to include `depth`, `albedo`, `normal`, or `alpha` |
+| Blender freezes or crashes on large scan | Image exceeds GPU texture limit or RAM headroom | See **Large scans** section — downsample inputs externally before importing |
 
 ---
 
-*Manual version 2.4 — Selene PSS addon v2.4.x*
-*Factum Arte / Factum Foundation — March 2026*
+*Manual version 2.4.3 — Selene PSS addon v2.4.3*
+*Factum Arte / Factum Foundation — May 2026*

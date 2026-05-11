@@ -66,9 +66,20 @@ magick normal.tif  -resize 8192x8192 normal_8k.tif
 ```
 
 Downsample depth, albedo and normal with the same target size so they stay
-aligned. Re-importing a downsampled scan keeps the physical dimensions and Z
-range correct as long as DPI mode is configured for the new pixel size, or
-W/H is entered manually.
+aligned. The Z range is preserved automatically — the addon reads it from the
+depth values themselves, not from pixel dimensions.
+
+For physical size, **the safe option is W/H mode**: enter the real-world
+width and height in cm manually, exactly as you would for the original scan.
+If you prefer DPI mode, the DPI value must be rescaled to match the new pixel
+count:
+
+```
+DPI_downsampled = DPI_original × (new_px / old_px)
+```
+
+Example: original 25 000 px at 600 DPI downsampled to 8 192 px →
+DPI_downsampled = 600 × (8192 / 25000) ≈ 197.
 
 ## Repository layout
 
