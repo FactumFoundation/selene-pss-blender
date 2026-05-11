@@ -217,6 +217,10 @@ def _convert_depth_32f_to_16b(path_in):
     rgba[2::4] = flat_norm
     rgba[3::4] = 1.0
     img_out.pixels.foreach_set(rgba)
+    # foreach_set writes to the internal buffer but doesn't always flag the
+    # image as dirty; without update() some Blender versions persist the
+    # pre-write contents when save_render() is called, producing a blank TIFF.
+    img_out.update()
     del rgba, flat_norm
 
     scene = bpy.context.scene
