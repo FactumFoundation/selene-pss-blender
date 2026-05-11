@@ -7,7 +7,7 @@ Importa escaneos photometric-stereo en Blender a partir de 4 imagenes.
 bl_info = {
     "name":        "Selene PSS",
     "author":      "Factum Arte / Factum Foundation",
-    "version":     (2, 4, 4),
+    "version":     (2, 4, 5),
     "blender":     (3, 0, 0),
     "location":    "View3D > Sidebar > PSS",
     "description": "Import photometric stereo scans into Blender (depth, albedo, normal, alpha)",
@@ -776,6 +776,11 @@ def _reset_props(props):
 def _on_load_post(filepath, *args):
     if hasattr(bpy.context.scene, "pss_props"):
         _reset_props(bpy.context.scene.pss_props)
+    # Blender suppresses property update callbacks during file load, so the
+    # path_depth = "" assignment inside _reset_props doesn't fire
+    # _on_depth_path_update. Drop the cached image explicitly so a .blend
+    # that was saved with PSS_depth_disp doesn't surface stale dimensions.
+    _drop_processed_depth()
 
 
 def register():
@@ -784,6 +789,10 @@ def register():
     bpy.utils.register_class(PSS_FH_DropImages)
     bpy.types.Scene.pss_props = bpy.props.PointerProperty(type=PSSProperties)
     bpy.app.handlers.load_post.append(_on_load_post)
+    # Cover Refresh Local / disable+enable: the .blend isn't reloaded so
+    # _on_load_post never fires, but a previously processed image may still
+    # be sitting in bpy.data.images and would resurface the stale preview.
+    _drop_processed_depth()
     v = bl_info["version"]
     print(f"[OK] Selene PSS v{v[0]}.{v[1]}.{v[2]} registered")
 
